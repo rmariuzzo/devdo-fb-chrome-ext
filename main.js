@@ -10,15 +10,67 @@ $(function () {
     $('.UFICommentBody').each(function () {
         var comment = $(this),
             text = comment.text();
-        // Check for `code`...
-        if ((text.match(/`/g) || []).length > 1) {
-            comment.find(':not(:has(*), :empty)').each(function () {
-                var n = $(this),
-                    t = n.text(),
-                    c = t.match(/`(.+)`/);
-                if (c) {
-                    n.html(t.replace(/`(.+)`/, '<u>' + c[1] + '</u>'));
+
+        // Check for `inlined code`.
+        if (text.match(/`([^`]+)`/)) {
+            comment.find('> span').each(function (i, value) {
+                var nodeInComment = $(this),
+                    nodeText = nodeInComment.text();
+                nodeInComment.html(nodeText.replace(/`([^`]+)`/, function (match, group1) {
+                    return '<span class="devdo__inlined_code">' + group1 + '</span>'
+                }));
+            });
+        }
+
+        // Check for {code}block code{code}.
+        if (text.match(/{code}.+{code}/)) {
+
+            var opened = false,
+                justClosed = false;
+                pointer = null, 
+                codes = [],
+                nodesToRemove = [];
+
+            comment.find('> *').each(function () {
+
+                var nodeInComment = $(this),
+                    nodeText = nodeInComment.text();
+
+                if (opened) {
+
+                    if (nodeInComment.is('span')) {
+                        codes.push(nodeText);
+                        nodesToRemove.push(nodeInComment);
+                    } else if (!nodeText.match(/{code:?(.+)?}}/)) {
+                        nodeInComment.remove();
+                        return true;
+                    }
+                } 
+
+                if (justClosed && !nodeInComment.is('span')) {
+                    justClosed = false;
+                    nodeInComment.remove();
                 }
+
+                nodeInComment.html(nodeText.replace(/{code:?(.+)?}/, function (tag, lang) {
+
+                    if (opened) {
+                        codes.pop();
+                        var highlightedCode = lang ? hljs.highlight(lang, codes.join('\n')).value : hljs.highlightAuto(codes.join('\n')).value;
+                        pointer.after('<pre class="devdo__block_code">' + highlightedCode + '</pre>');
+                        nodesToRemove.forEach(function (n) {
+                            n.remove();
+                        });
+                        codes = [];
+                        justClosed = true;
+                    } else {
+                        pointer = nodeInComment;
+                    }
+
+                    opened = !opened;
+                    return '';
+                }));
+
             });
         }
     });

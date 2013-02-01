@@ -20,7 +20,8 @@
         "*://www.facebook.com/groups/devdominicanos/*"
       ],
       "css": [
-        "vendors/highlight.css"
+        "vendors/highlight.css",
+        "screen.css"
       ],
       "js": [
         "vendors/jquery.js",
